@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bubble Letters Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB, #1E90FF);
+            touch-action: none; /* Prevent default touch behaviors */
+            -webkit-touch-callout: none; /* Prevent callout on long-press */
+            -webkit-user-select: none; /* Prevent text selection */
+            user-select: none;
+        }
+        canvas {
+            display: block;
+        }
+        #score {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: clamp(24px, 5vw, 32px); /* Responsive font size */
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        }
+        @media (max-width: 768px) {
+            #score {
+                top: 40px;
+                left: 40px;
+            }
+        }
+        button {
+            font-family: Arial, sans-serif;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: <span id="scoreValue">0</span></div>
+    
+    <!-- Audio elements -->
+    <audio id="popSound" preload="auto">
+        <source src="bubble-pop.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="gameEndSound" preload="auto">
+        <source src="game-end.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="errorSound" preload="auto">
+        <source src="new-error.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html> 
