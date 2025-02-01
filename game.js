@@ -218,6 +218,10 @@ class Game {
         
         this.score = 0;
         this.setupEventListeners();
+        
+        // Add boundary visualization
+        this.addBoundaryBox();
+        
         this.animate();
     }
     
@@ -412,11 +416,79 @@ class Game {
         }
     }
     
+    addBoundaryBox() {
+        // Create boundary lines
+        const boundaryGeometry = new THREE.BufferGeometry();
+        const boundaryMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x4488ff,
+            linewidth: 2,
+            transparent: true,
+            opacity: 0.6
+        });
+        
+        // Define boundary vertices (slightly inside the actual bounds)
+        const vertices = new Float32Array([
+            // Left vertical line
+            -8, -6, 0,
+            -8, 6, 0,
+            
+            // Top horizontal line
+            -8, 6, 0,
+            8, 6, 0,
+            
+            // Right vertical line
+            8, 6, 0,
+            8, -6, 0,
+            
+            // Bottom horizontal line
+            8, -6, 0,
+            -8, -6, 0
+        ]);
+        
+        boundaryGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        const boundaryBox = new THREE.LineSegments(boundaryGeometry, boundaryMaterial);
+        boundaryBox.position.z = -0.1; // Slightly behind bubbles
+        this.scene.add(boundaryBox);
+        
+        // Add corner decorations
+        const cornerSize = 0.5;
+        const corners = [
+            { x: -8, y: 6 },  // Top-left
+            { x: 8, y: 6 },   // Top-right
+            { x: 8, y: -6 },  // Bottom-right
+            { x: -8, y: -6 }  // Bottom-left
+        ];
+        
+        corners.forEach(corner => {
+            const cornerDecor = new THREE.Mesh(
+                new THREE.CircleGeometry(cornerSize, 32),
+                new THREE.MeshBasicMaterial({
+                    color: 0x4488ff,
+                    transparent: true,
+                    opacity: 0.4
+                })
+            );
+            cornerDecor.position.set(corner.x, corner.y, -0.2);
+            this.scene.add(cornerDecor);
+        });
+        
+        // Add pulsing glow effect
+        this.boundaryBox = boundaryBox;
+        this.pulseTime = 0;
+    }
+    
     animate() {
         requestAnimationFrame(() => this.animate());
         
         // Update bubble positions with collision detection
         this.bubbles.forEach(bubble => bubble.update(this.bubbles));
+        
+        // Animate boundary glow
+        this.pulseTime += 0.02;
+        const pulseValue = Math.sin(this.pulseTime) * 0.2 + 0.6;
+        if (this.boundaryBox) {
+            this.boundaryBox.material.opacity = pulseValue;
+        }
         
         this.renderer.render(this.scene, this.camera);
     }

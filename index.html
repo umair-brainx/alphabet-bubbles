@@ -8,7 +8,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background: linear-gradient(to bottom, #87CEEB, #1E90FF);
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
             touch-action: none; /* Prevent default touch behaviors */
             -webkit-touch-callout: none; /* Prevent callout on long-press */
             -webkit-user-select: none; /* Prevent text selection */
@@ -23,8 +23,13 @@
             left: 20px;
             color: white;
             font-size: clamp(24px, 5vw, 32px); /* Responsive font size */
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
+            text-shadow: 0 0 10px rgba(68, 136, 255, 0.8);
             z-index: 1000;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(68, 136, 255, 0.5);
         }
         @media (max-width: 768px) {
             #score {
@@ -33,12 +38,17 @@
             }
         }
         button {
-            font-family: Arial, sans-serif;
-            transition: background-color 0.3s;
+            font-family: 'Arial', sans-serif;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(68, 136, 255, 0.5);
+            background: linear-gradient(145deg, #4CAF50, #45a049);
+            border: 2px solid rgba(255, 255, 255, 0.1);
         }
         
         button:hover {
-            background-color: #45a049 !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(68, 136, 255, 0.8);
+            background: linear-gradient(145deg, #45a049, #4CAF50) !important;
         }
     </style>
 </head>
