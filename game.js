@@ -61,8 +61,8 @@ class Bubble {
         
         this.letter = letter;
         
-        // Update radius to match visual size (base radius * scale)
-        this.radius = 0.8 * 1.2; // Base geometry radius (0.8) * bubble scale (1.2)
+        // Dynamic radius calculation based on geometry and scale
+        this.updateRadius(1.2); // Initial scale
     }
     
     addBubbleDecorations(scene) {
@@ -97,7 +97,14 @@ class Bubble {
         this.velocity.y = (this.velocity.y / speed) * this.baseSpeed;
     }
     
-    update(otherBubbles) {
+    updateRadius(scale) {
+        // Calculate actual radius based on geometry and current scale
+        this.radius = (this.geometry.parameters.radius * scale);
+        // Add a small buffer for better collision detection
+        this.collisionRadius = this.radius * 0.9; // Slightly smaller than visual radius
+    }
+    
+    update(otherBubbles, bounds) {
         // Store previous position for collision resolution
         const prevX = this.mesh.position.x;
         const prevY = this.mesh.position.y;
@@ -106,14 +113,27 @@ class Bubble {
         this.mesh.position.x += this.velocity.x;
         this.mesh.position.y += this.velocity.y;
         
-        // Bounce off walls with some padding
-        if (Math.abs(this.mesh.position.x) > 8) {
+        // Dynamic boundary check using provided bounds
+        const maxX = bounds.right - this.collisionRadius;
+        const minX = bounds.left + this.collisionRadius;
+        const maxY = bounds.top - this.collisionRadius;
+        const minY = bounds.bottom + this.collisionRadius;
+        
+        // Bounce off walls with dynamic boundaries
+        if (this.mesh.position.x > maxX) {
             this.velocity.x *= -1;
-            this.mesh.position.x = Math.sign(this.mesh.position.x) * 8;
+            this.mesh.position.x = maxX;
+        } else if (this.mesh.position.x < minX) {
+            this.velocity.x *= -1;
+            this.mesh.position.x = minX;
         }
-        if (Math.abs(this.mesh.position.y) > 6) {
+        
+        if (this.mesh.position.y > maxY) {
             this.velocity.y *= -1;
-            this.mesh.position.y = Math.sign(this.mesh.position.y) * 6;
+            this.mesh.position.y = maxY;
+        } else if (this.mesh.position.y < minY) {
+            this.velocity.y *= -1;
+            this.mesh.position.y = minY;
         }
         
         // Check collisions with other bubbles
@@ -122,43 +142,36 @@ class Bubble {
                 const dx = this.mesh.position.x - otherBubble.mesh.position.x;
                 const dy = this.mesh.position.y - otherBubble.mesh.position.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                const minDistance = this.radius + otherBubble.radius;
+                const minDistance = this.collisionRadius + otherBubble.collisionRadius;
                 
                 if (distance < minDistance) {
-                    // Collision detected - move bubbles apart
+                    // Move bubbles apart proportionally to their overlap
+                    const overlap = minDistance - distance;
                     const angle = Math.atan2(dy, dx);
+                    const moveX = Math.cos(angle) * overlap * 0.5;
+                    const moveY = Math.sin(angle) * overlap * 0.5;
                     
-                    // Move bubbles apart
-                    this.mesh.position.x = otherBubble.mesh.position.x + Math.cos(angle) * minDistance;
-                    this.mesh.position.y = otherBubble.mesh.position.y + Math.sin(angle) * minDistance;
+                    this.mesh.position.x += moveX;
+                    this.mesh.position.y += moveY;
+                    otherBubble.mesh.position.x -= moveX;
+                    otherBubble.mesh.position.y -= moveY;
                     
-                    // Simplified collision response
-                    const normalX = dx / distance;
-                    const normalY = dy / distance;
-                    
-                    // Exchange velocities along the collision normal
+                    // Exchange velocities
                     const tempVx = this.velocity.x;
                     const tempVy = this.velocity.y;
-                    
                     this.velocity.x = otherBubble.velocity.x;
                     this.velocity.y = otherBubble.velocity.y;
                     otherBubble.velocity.x = tempVx;
                     otherBubble.velocity.y = tempVy;
                     
-                    // Normalize velocities after collision
+                    // Normalize velocities
                     this.normalizeVelocity();
                     otherBubble.normalizeVelocity();
                 }
             }
         });
         
-        // Always normalize velocity after any movement
         this.normalizeVelocity();
-        
-        // Rotate decorative bubbles
-        this.decorations.forEach((decoration, i) => {
-            decoration.rotation.z += 0.01 * (i + 1);
-        });
     }
 }
 
@@ -192,10 +205,14 @@ class Game {
         // Track available letters
         this.availableLetters = 'ABCDEF'.split('');
         
-        // Initialize bubbles
+        // Initialize bubbles with adjusted spawn area
         this.bubbles = [];
         for (let i = 0; i < this.availableLetters.length; i++) {
-            this.bubbles.push(new Bubble(this.scene, this.availableLetters[i]));
+            const bubble = new Bubble(this.scene, this.availableLetters[i]);
+            // Adjust initial positions to be within new boundaries
+            bubble.mesh.position.x = Math.random() * 14 - 7; // Reduced from 16/8
+            bubble.mesh.position.y = Math.random() * 10 - 5; // Reduced from 12/6
+            this.bubbles.push(bubble);
         }
         
         // Add touch support and responsive sizing
@@ -219,7 +236,15 @@ class Game {
         this.score = 0;
         this.setupEventListeners();
         
-        // Add boundary visualization
+        // Define game boundaries
+        this.bounds = {
+            left: -8,
+            right: 8,
+            top: 6,
+            bottom: -6
+        };
+        
+        // Add boundary visualization with padding
         this.addBoundaryBox();
         
         this.animate();
@@ -268,15 +293,14 @@ class Game {
     }
     
     adjustBubbleSize(bubble) {
-        // Adjust bubble sizes to 80% of original
         const baseScale = this.isMobile ? 1.44 : 0.96;
         bubble.letterSprite.scale.set(baseScale, baseScale, 1);
         
-        const bubbleScale = 1.2; // 80% of 1.5
+        const bubbleScale = 1.2;
         bubble.mesh.scale.set(bubbleScale, bubbleScale, 1);
         
-        // Update collision radius when bubble size changes
-        bubble.radius = 0.8 * bubbleScale;
+        // Update bubble's collision radius
+        bubble.updateRadius(bubbleScale);
         
         // Adjust decoration sizes
         bubble.decorations.forEach(decoration => {
@@ -363,7 +387,11 @@ class Game {
         
         // Create new bubbles
         for (let i = 0; i < this.availableLetters.length; i++) {
-            this.bubbles.push(new Bubble(this.scene, this.availableLetters[i]));
+            const bubble = new Bubble(this.scene, this.availableLetters[i]);
+            // Adjust initial positions to be within new boundaries
+            bubble.mesh.position.x = Math.random() * 14 - 7; // Reduced from 16/8
+            bubble.mesh.position.y = Math.random() * 10 - 5; // Reduced from 12/6
+            this.bubbles.push(bubble);
         }
         
         // Reset score
@@ -417,46 +445,46 @@ class Game {
     }
     
     addBoundaryBox() {
+        // Add padding to visual boundary
+        const padding = 1;
+        const visualBounds = {
+            left: this.bounds.left - padding,
+            right: this.bounds.right + padding,
+            top: this.bounds.top + padding,
+            bottom: this.bounds.bottom - padding
+        };
+        
         // Create boundary lines
+        const vertices = new Float32Array([
+            visualBounds.left, visualBounds.bottom, 0,
+            visualBounds.left, visualBounds.top, 0,
+            visualBounds.left, visualBounds.top, 0,
+            visualBounds.right, visualBounds.top, 0,
+            visualBounds.right, visualBounds.top, 0,
+            visualBounds.right, visualBounds.bottom, 0,
+            visualBounds.right, visualBounds.bottom, 0,
+            visualBounds.left, visualBounds.bottom, 0
+        ]);
+        
         const boundaryGeometry = new THREE.BufferGeometry();
+        boundaryGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
         const boundaryMaterial = new THREE.LineBasicMaterial({ 
             color: 0x4488ff,
             linewidth: 2,
             transparent: true,
             opacity: 0.6
         });
-        
-        // Define boundary vertices (slightly inside the actual bounds)
-        const vertices = new Float32Array([
-            // Left vertical line
-            -8, -6, 0,
-            -8, 6, 0,
-            
-            // Top horizontal line
-            -8, 6, 0,
-            8, 6, 0,
-            
-            // Right vertical line
-            8, 6, 0,
-            8, -6, 0,
-            
-            // Bottom horizontal line
-            8, -6, 0,
-            -8, -6, 0
-        ]);
-        
-        boundaryGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
         const boundaryBox = new THREE.LineSegments(boundaryGeometry, boundaryMaterial);
-        boundaryBox.position.z = -0.1; // Slightly behind bubbles
+        boundaryBox.position.z = -0.1;
         this.scene.add(boundaryBox);
         
-        // Add corner decorations
+        // Add corner decorations with adjusted positions
         const cornerSize = 0.5;
         const corners = [
-            { x: -8, y: 6 },  // Top-left
-            { x: 8, y: 6 },   // Top-right
-            { x: 8, y: -6 },  // Bottom-right
-            { x: -8, y: -6 }  // Bottom-left
+            { x: visualBounds.left, y: visualBounds.top },   // Top-left
+            { x: visualBounds.right, y: visualBounds.top },    // Top-right
+            { x: visualBounds.right, y: visualBounds.bottom },   // Bottom-right
+            { x: visualBounds.left, y: visualBounds.bottom }   // Bottom-left
         ];
         
         corners.forEach(corner => {
@@ -480,8 +508,8 @@ class Game {
     animate() {
         requestAnimationFrame(() => this.animate());
         
-        // Update bubble positions with collision detection
-        this.bubbles.forEach(bubble => bubble.update(this.bubbles));
+        // Update bubbles with boundary information
+        this.bubbles.forEach(bubble => bubble.update(this.bubbles, this.bounds));
         
         // Animate boundary glow
         this.pulseTime += 0.02;
