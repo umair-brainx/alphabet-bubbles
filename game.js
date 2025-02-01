@@ -48,16 +48,21 @@ class Bubble {
         this.mesh.add(this.letterSprite);
         scene.add(this.mesh);
         
-        // Slower 2D movement
+        // Add base speed property
+        this.baseSpeed = 0.03;
+        // Initialize velocity with base speed
         this.velocity = {
-            x: (Math.random() - 0.5) * 0.03,
-            y: (Math.random() - 0.5) * 0.03
+            x: (Math.random() - 0.5) * this.baseSpeed,
+            y: (Math.random() - 0.5) * this.baseSpeed
         };
         
         // Add small bubble decorations
         this.addBubbleDecorations(scene);
         
         this.letter = letter;
+        
+        // Add radius property for collision detection
+        this.radius = 0.8; // Match with circle geometry size
     }
     
     addBubbleDecorations(scene) {
@@ -83,7 +88,22 @@ class Bubble {
         }
     }
     
-    update() {
+    normalizeVelocity() {
+        // Calculate current speed
+        const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+        if (speed > this.baseSpeed) {
+            // Normalize velocity back to base speed
+            this.velocity.x = (this.velocity.x / speed) * this.baseSpeed;
+            this.velocity.y = (this.velocity.y / speed) * this.baseSpeed;
+        }
+    }
+    
+    update(otherBubbles) {
+        // Store previous position for collision resolution
+        const prevX = this.mesh.position.x;
+        const prevY = this.mesh.position.y;
+        
+        // Update position
         this.mesh.position.x += this.velocity.x;
         this.mesh.position.y += this.velocity.y;
         
@@ -95,6 +115,46 @@ class Bubble {
         if (Math.abs(this.mesh.position.y) > 6) {
             this.velocity.y *= -1;
             this.mesh.position.y = Math.sign(this.mesh.position.y) * 6;
+        }
+        
+        // Check collisions with other bubbles
+        otherBubbles.forEach(otherBubble => {
+            if (otherBubble !== this) {
+                const dx = this.mesh.position.x - otherBubble.mesh.position.x;
+                const dy = this.mesh.position.y - otherBubble.mesh.position.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const minDistance = this.radius + otherBubble.radius;
+                
+                if (distance < minDistance) {
+                    // Collision detected - move bubbles apart
+                    const angle = Math.atan2(dy, dx);
+                    
+                    // Move bubbles apart
+                    this.mesh.position.x = otherBubble.mesh.position.x + Math.cos(angle) * minDistance;
+                    this.mesh.position.y = otherBubble.mesh.position.y + Math.sin(angle) * minDistance;
+                    
+                    // Calculate new velocities (elastic collision)
+                    const normalX = dx / distance;
+                    const normalY = dy / distance;
+                    
+                    const p = 2 * (this.velocity.x * normalX + this.velocity.y * normalY);
+                    
+                    // Update velocities
+                    this.velocity.x = this.velocity.x - p * normalX;
+                    this.velocity.y = this.velocity.y - p * normalY;
+                    otherBubble.velocity.x = otherBubble.velocity.x + p * normalX;
+                    otherBubble.velocity.y = otherBubble.velocity.y + p * normalY;
+                    
+                    // Normalize velocities after collision
+                    this.normalizeVelocity();
+                    otherBubble.normalizeVelocity();
+                }
+            }
+        });
+        
+        // Normalize velocity after wall collisions too
+        if (Math.abs(this.mesh.position.x) > 8 || Math.abs(this.mesh.position.y) > 6) {
+            this.normalizeVelocity();
         }
         
         // Rotate decorative bubbles
@@ -352,8 +412,8 @@ class Game {
     animate() {
         requestAnimationFrame(() => this.animate());
         
-        // Update bubble positions
-        this.bubbles.forEach(bubble => bubble.update());
+        // Update bubble positions with collision detection
+        this.bubbles.forEach(bubble => bubble.update(this.bubbles));
         
         this.renderer.render(this.scene, this.camera);
     }
