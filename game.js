@@ -61,8 +61,8 @@ class Bubble {
         
         this.letter = letter;
         
-        // Add radius property for collision detection
-        this.radius = 0.8; // Match with circle geometry size
+        // Update radius to match visual size (base radius * scale)
+        this.radius = 0.8 * 1.2; // Base geometry radius (0.8) * bubble scale (1.2)
     }
     
     addBubbleDecorations(scene) {
@@ -123,6 +123,8 @@ class Bubble {
                 const dx = this.mesh.position.x - otherBubble.mesh.position.x;
                 const dy = this.mesh.position.y - otherBubble.mesh.position.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Remove the 1.05 buffer multiplier
                 const minDistance = this.radius + otherBubble.radius;
                 
                 if (distance < minDistance) {
@@ -267,13 +269,18 @@ class Game {
     
     adjustBubbleSize(bubble) {
         // Adjust bubble sizes to 80% of original
-        const baseScale = this.isMobile ? 1.44 : 0.96; // 80% of 1.8/1.2
+        const baseScale = this.isMobile ? 1.44 : 0.96;
         bubble.letterSprite.scale.set(baseScale, baseScale, 1);
-        bubble.mesh.scale.set(1.2, 1.2, 1); // 80% of 1.5
+        
+        const bubbleScale = 1.2; // 80% of 1.5
+        bubble.mesh.scale.set(bubbleScale, bubbleScale, 1);
+        
+        // Update collision radius when bubble size changes
+        bubble.radius = 0.8 * bubbleScale;
         
         // Adjust decoration sizes
         bubble.decorations.forEach(decoration => {
-            decoration.scale.set(1.2, 1.2, 1); // 80% of 1.5
+            decoration.scale.set(bubbleScale, bubbleScale, 1);
         });
     }
     
