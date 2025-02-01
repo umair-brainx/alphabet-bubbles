@@ -48,8 +48,8 @@ class Bubble {
         this.mesh.add(this.letterSprite);
         scene.add(this.mesh);
         
-        // Add base speed property
-        this.baseSpeed = 0.03;
+        // Add base speed property with slightly lower value
+        this.baseSpeed = 0.025; // Reduced from 0.03
         // Initialize velocity with base speed
         this.velocity = {
             x: (Math.random() - 0.5) * this.baseSpeed,
@@ -91,11 +91,10 @@ class Bubble {
     normalizeVelocity() {
         // Calculate current speed
         const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
-        if (speed > this.baseSpeed) {
-            // Normalize velocity back to base speed
-            this.velocity.x = (this.velocity.x / speed) * this.baseSpeed;
-            this.velocity.y = (this.velocity.y / speed) * this.baseSpeed;
-        }
+        
+        // Always normalize to base speed, not just when exceeding
+        this.velocity.x = (this.velocity.x / speed) * this.baseSpeed;
+        this.velocity.y = (this.velocity.y / speed) * this.baseSpeed;
     }
     
     update(otherBubbles) {
@@ -123,8 +122,6 @@ class Bubble {
                 const dx = this.mesh.position.x - otherBubble.mesh.position.x;
                 const dy = this.mesh.position.y - otherBubble.mesh.position.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                // Remove the 1.05 buffer multiplier
                 const minDistance = this.radius + otherBubble.radius;
                 
                 if (distance < minDistance) {
@@ -135,17 +132,18 @@ class Bubble {
                     this.mesh.position.x = otherBubble.mesh.position.x + Math.cos(angle) * minDistance;
                     this.mesh.position.y = otherBubble.mesh.position.y + Math.sin(angle) * minDistance;
                     
-                    // Calculate new velocities (elastic collision)
+                    // Simplified collision response
                     const normalX = dx / distance;
                     const normalY = dy / distance;
                     
-                    const p = 2 * (this.velocity.x * normalX + this.velocity.y * normalY);
+                    // Exchange velocities along the collision normal
+                    const tempVx = this.velocity.x;
+                    const tempVy = this.velocity.y;
                     
-                    // Update velocities
-                    this.velocity.x = this.velocity.x - p * normalX;
-                    this.velocity.y = this.velocity.y - p * normalY;
-                    otherBubble.velocity.x = otherBubble.velocity.x + p * normalX;
-                    otherBubble.velocity.y = otherBubble.velocity.y + p * normalY;
+                    this.velocity.x = otherBubble.velocity.x;
+                    this.velocity.y = otherBubble.velocity.y;
+                    otherBubble.velocity.x = tempVx;
+                    otherBubble.velocity.y = tempVy;
                     
                     // Normalize velocities after collision
                     this.normalizeVelocity();
@@ -154,10 +152,8 @@ class Bubble {
             }
         });
         
-        // Normalize velocity after wall collisions too
-        if (Math.abs(this.mesh.position.x) > 8 || Math.abs(this.mesh.position.y) > 6) {
-            this.normalizeVelocity();
-        }
+        // Always normalize velocity after any movement
+        this.normalizeVelocity();
         
         // Rotate decorative bubbles
         this.decorations.forEach((decoration, i) => {
